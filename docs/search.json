@@ -11,7 +11,7 @@
     "href": "index.html",
     "title": "Personal Cite",
     "section": "",
-    "text": "Post With Code\n\n\n\nnews\n\ncode\n\nanalysis\n\n\n\n\n\n\n\n\n\nFeb 18, 2026\n\n\nHarlow Malloc\n\n\n\n\n\n\n\n\n\n\n\n\nTest Marimo Post\n\n\n\n\n\n\n\n\n\n\n\nFeb 18, 2026\n\n\nJ. Hathaway\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nFeb 15, 2026\n\n\nTristan O’Malley\n\n\n\n\n\nNo matching items"
+    "text": "Canvas Connector React\n\n\n\nreact\n\nfastapi\n\ncanvas\n\npython\n\n\n\nA React + FastAPI app that connects to Canvas LMS using a custom Python package\n\n\n\n\n\nMar 4, 2026\n\n\nMitchell L. Mecham\n\n\n\n\n\n\n\n\n\n\n\n\nPost With Code\n\n\n\nnews\n\ncode\n\nanalysis\n\n\n\n\n\n\n\n\n\nFeb 18, 2026\n\n\nHarlow Malloc\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nFeb 15, 2026\n\n\nTristan O’Malley\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "about.html",
@@ -28,17 +28,45 @@
     "text": "This is a post with executable code."
   },
   {
-    "objectID": "posts/test/index.html",
-    "href": "posts/test/index.html",
-    "title": "Test Marimo Post",
+    "objectID": "posts/canvas-connector-react/index.html",
+    "href": "posts/canvas-connector-react/index.html",
+    "title": "Canvas Connector React",
     "section": "",
-    "text": "This repository provides a framework for integrating  with , enabling markdown documents to be executed in a environment, and reactive in page.\n\n    \n    \n    \n    import%20marimo%20as%20mo\n\n\n    \n    \n    \n    slider%20%3D%20mo.ui.slider(start%3D1%2C%20stop%3D10)%0Aslider\n\nmo.md(f'''\n  # Hello from marimo!{'!' * slider.value}\n\n  This is a raw, reactive python cell.\n  You can edit it, and the output will change on run.\n''').callout(\"info\")\n\n    \n    \n    \n    \n\nWrite your post here."
+    "text": "Canvas LMS Connector is a full-stack web application I built to make Canvas data more accessible and social. Instead of digging through Canvas’s cluttered interface, users can see their courses and classmates in a clean, friendly UI.\nThe project lives at github.com/MLMecham/datathink-project."
   },
   {
-    "objectID": "posts/test/index.html#explore-a-marimo-based-post",
-    "href": "posts/test/index.html#explore-a-marimo-based-post",
-    "title": "Test Marimo Post",
+    "objectID": "posts/canvas-connector-react/index.html#what-is-canvas-connector",
+    "href": "posts/canvas-connector-react/index.html#what-is-canvas-connector",
+    "title": "Canvas Connector React",
     "section": "",
-    "text": "This repository provides a framework for integrating  with , enabling markdown documents to be executed in a environment, and reactive in page.\n\n    \n    \n    \n    import%20marimo%20as%20mo\n\n\n    \n    \n    \n    slider%20%3D%20mo.ui.slider(start%3D1%2C%20stop%3D10)%0Aslider\n\nmo.md(f'''\n  # Hello from marimo!{'!' * slider.value}\n\n  This is a raw, reactive python cell.\n  You can edit it, and the output will change on run.\n''').callout(\"info\")\n\n    \n    \n    \n    \n\nWrite your post here."
+    "text": "Canvas Connector is a full-stack web application I built to make Canvas LMS data more accessible and social. Instead of digging through Canvas’s cluttered interface, users can log in and instantly see their courses and classmates in a clean, friendly UI.\nThe project lives at github.com/MLMecham/datathink-project."
+  },
+  {
+    "objectID": "posts/canvas-connector-react/index.html#the-stack",
+    "href": "posts/canvas-connector-react/index.html#the-stack",
+    "title": "Canvas Connector React",
+    "section": "The Stack",
+    "text": "The Stack\nFrontend — React The UI is built in React, giving users a fast, responsive experience. It handles authentication input (your Canvas API token) and displays your courses and friends in a clean dashboard.\nBackend — FastAPI FastAPI serves as the bridge between the React frontend and Canvas. It exposes endpoints the frontend calls to fetch user data, and handles all the Canvas API communication server-side.\nThe Secret Sauce — canvasconnector The backend is powered by canvasconnector, a Python library that wraps the Canvas REST API into clean, Pythonic calls — so FastAPI doesn’t have to deal with raw HTTP requests to Canvas directly."
+  },
+  {
+    "objectID": "posts/canvas-connector-react/index.html#what-it-does",
+    "href": "posts/canvas-connector-react/index.html#what-it-does",
+    "title": "Canvas Connector React",
+    "section": "What It Does",
+    "text": "What It Does\n\n🎓 Shows you your enrolled courses\n👥 Displays your Canvas friends and classmates\n🔑 Uses your personal Canvas API token to authenticate"
+  },
+  {
+    "objectID": "posts/canvas-connector-react/index.html#whats-next",
+    "href": "posts/canvas-connector-react/index.html#whats-next",
+    "title": "Canvas Connector React",
+    "section": "What’s Next?",
+    "text": "What’s Next?\nAn interactive version of this post using marimo is on the roadmap — imagine entering your Canvas API token right here on the page and seeing your courses load instantly. Stay tuned."
+  },
+  {
+    "objectID": "posts/canvas-connector-react/index.html#what-is-canvas-lms-connector",
+    "href": "posts/canvas-connector-react/index.html#what-is-canvas-lms-connector",
+    "title": "Canvas Connector React",
+    "section": "",
+    "text": "Canvas LMS Connector is a full-stack web application I built to make Canvas data more accessible and social. Instead of digging through Canvas’s cluttered interface, users can see their courses and classmates in a clean, friendly UI.\nThe project lives at github.com/MLMecham/datathink-project."
   }
 ]

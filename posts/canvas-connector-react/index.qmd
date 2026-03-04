@@ -1,0 +1,45 @@
+---
+title: "Canvas Connector React"
+description: "A React + FastAPI app that connects to Canvas LMS using a custom Python package"
+author: "Mitchell L. Mecham"
+date: "2026-03-04"
+categories: [react, fastapi, canvas, python]
+draft: false
+---
+
+## What is Canvas LMS Connector?
+
+Canvas LMS Connector is a full-stack web application I built to make Canvas 
+data more accessible and social. Instead of digging through Canvas's cluttered 
+interface, users can see their courses and classmates in a clean, friendly UI.
+
+The project lives at [github.com/MLMecham/datathink-project](https://github.com/MLMecham/datathink-project).
+
+## The Stack
+
+**Frontend — React**
+The UI is built in React, giving users a fast, responsive experience. 
+It handles authentication input (your Canvas API token) and displays 
+your courses and friends in a clean dashboard.
+
+**Backend — FastAPI**
+FastAPI serves as the bridge between the React frontend and Canvas. 
+It exposes endpoints the frontend calls to fetch user data, and handles 
+all the Canvas API communication server-side.
+
+**The Secret Sauce — `canvasconnector`**
+The backend is powered by [`canvasconnector`](https://github.com/byuirpytooling/canvasconnector), 
+a Python library that wraps the Canvas REST API into clean, Pythonic calls — 
+so FastAPI doesn't have to deal with raw HTTP requests to Canvas directly.
+
+## What It Does
+
+- 🎓 Shows you your enrolled **courses**
+- 👥 Displays your Canvas **friends and classmates**
+- 🔑 Uses your personal **Canvas API token** to authenticate
+
+## What's Next?
+
+An interactive version of this post using marimo is on the roadmap — 
+imagine entering your Canvas API token right here on the page and seeing 
+your courses load instantly. Stay tuned.
