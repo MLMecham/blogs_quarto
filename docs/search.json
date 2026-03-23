@@ -11,7 +11,7 @@
     "href": "index.html",
     "title": "Personal Cite",
     "section": "",
-    "text": "Canvas Connector React\n\n\n\nreact\n\nfastapi\n\ncanvas\n\npython\n\n\n\nA React + FastAPI app that connects to Canvas LMS using a custom Python package\n\n\n\n\n\nMar 4, 2026\n\n\nMitchell L. Mecham\n\n\n\n\n\n\n\n\n\n\n\n\nPost With Code\n\n\n\nnews\n\ncode\n\nanalysis\n\n\n\n\n\n\n\n\n\nFeb 18, 2026\n\n\nHarlow Malloc\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nFeb 15, 2026\n\n\nTristan O’Malley\n\n\n\n\n\nNo matching items"
+    "text": "From GitHub to PyPI: Publishing a Python Package with OIDC\n\n\n\npython\n\npypi\n\ngithub-actions\n\ndevops\n\n\n\nA practical walkthrough of publishing canvasconnector to PyPI, setting up automated releases with GitHub Actions, and ditching API tokens with OIDC trusted publishing.\n\n\n\n\n\nMar 23, 2026\n\n\nMitchell L. Mecham\n\n\n\n\n\n\n\n\n\n\n\n\nCanvas Connector React\n\n\n\nreact\n\nfastapi\n\ncanvas\n\npython\n\n\n\nA React + FastAPI app that connects to Canvas LMS using a custom Python package\n\n\n\n\n\nMar 4, 2026\n\n\nMitchell L. Mecham\n\n\n\n\n\n\n\n\n\n\n\n\nPost With Code\n\n\n\nnews\n\ncode\n\nanalysis\n\n\n\n\n\n\n\n\n\nFeb 18, 2026\n\n\nHarlow Malloc\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome To My Blog\n\n\n\nnews\n\n\n\n\n\n\n\n\n\nFeb 15, 2026\n\n\nTristan O’Malley\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "about.html",
@@ -68,5 +68,54 @@
     "title": "Canvas Connector React",
     "section": "",
     "text": "Canvas LMS Connector is a full-stack web application I built to make Canvas data more accessible and social. Instead of digging through Canvas’s cluttered interface, users can see their courses and classmates in a clean, friendly UI.\nThe project lives at github.com/MLMecham/datathink-project."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html",
+    "href": "posts/publishing-to-pypi/index.html",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "",
+    "text": "Once a package works well enough to share, the next step is getting it onto PyPI so anyone can install it with pip install or uv add. This post walks through how I published canvasconnector — a Python package for connecting to the Canvas LMS API — starting from a package that only lived on GitHub, all the way to automated releases through GitHub Actions using OIDC trusted publishing."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#what-you-need-before-starting",
+    "href": "posts/publishing-to-pypi/index.html#what-you-need-before-starting",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "What You Need Before Starting",
+    "text": "What You Need Before Starting\nBefore touching PyPI, the package should be installable from GitHub and have a working pyproject.toml. The canvasconnector README already had installation instructions pointing at the GitHub repo:\nuv pip install git+https://github.com/byuirpytooling/canvasconnector.git\nThat is fine for early development, but it is not discoverable and it requires users to know the exact GitHub URL. PyPI solves both of those problems.\nYou also need a PyPI account. Head to pypi.org, sign up, and verify your email before continuing. If it gives you recovery codes, save them somewhere safe or risk losing access."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#the-first-upload-manual-with-twine",
+    "href": "posts/publishing-to-pypi/index.html#the-first-upload-manual-with-twine",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "The First Upload: Manual with Twine",
+    "text": "The First Upload: Manual with Twine\nPyPI requires the package to exist before you can configure automated publishing. So the first upload is manual. Start by building the package with uv:\nuv build\nThis creates a dist/ folder containing two files: a .whl wheel file and a .tar.gz source distribution. Then install twine as a global tool:\nuv tool install twine\n\nGenerating an API Token\nBefore uploading you need an API token. Since the package does not exist on PyPI yet, you cannot scope the token to a specific project. Go to your account settings (not a project page — the project does not exist yet) and find the API tokens section. Click Add API token, name it something like canvasconnector, set the scope to All projects, and copy the token immediately. You only see it once.\n\n\n\nThe API tokens section in PyPI account settings showing a token scoped to all projects\n\n\nNow upload:\ntwine upload dist/*\nTwine will prompt for a username and token. Enter __token__ as the username (literally, that string) and paste your API token as the password.\n\n\n\nTwine prompting for the API token\n\n\n\n\n\nSuccessful upload showing both the wheel and source distribution\n\n\nOnce it completes, the package is live. You can verify by going to your PyPI account page.\n\n\n\ncanvasconnector appearing on PyPI with its first release\n\n\n\n\n\nThe package listed under your PyPI projects\n\n\nAt this point pip install canvasconnector works for anyone in the world. The manual upload is done and the API token can be deleted since we are about to replace it with something better."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#setting-up-oidc-trusted-publishing",
+    "href": "posts/publishing-to-pypi/index.html#setting-up-oidc-trusted-publishing",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "Setting Up OIDC Trusted Publishing",
+    "text": "Setting Up OIDC Trusted Publishing\nOIDC (OpenID Connect) lets PyPI verify that a publish request is coming from a specific GitHub Actions workflow in a specific repository, without any stored credentials. No token to manage, rotate, or accidentally leak.\n\nStep 1: Add a Trusted Publisher on PyPI\nNow that the package exists, go to your package on PyPI, click Manage, then Publishing. This is where you configure the GitHub connection — it lives under the project, not your account settings. Add a new trusted publisher under the GitHub tab and fill in:\n\nOwner: your GitHub organization or username (for canvasconnector this is byuirpytooling)\nRepository: canvasconnector\nWorkflow name: publishpypi.yml\nEnvironment name: pypi\n\n\n\n\nThe Add a new publisher form on PyPI with fields for owner, repository, workflow, and environment\n\n\nMake sure the owner matches the actual GitHub organization that owns the repo, not just your personal username. If they differ, the OIDC exchange will fail with an invalid-publisher error.\n\n\nStep 2: Create a GitHub Environment\nGitHub Actions needs a named environment called pypi to match what PyPI expects. Go to your repository Settings &gt; Environments and create a new environment named pypi.\n\n\n\nAdding the pypi environment in GitHub repository settings\n\n\n\n\n\nBoth the pypi and github-pages environments configured\n\n\nThe environment acts as a verified identity context. When the workflow runs inside it, GitHub issues a token that PyPI can validate against the trusted publisher configuration you just set up.\n\n\nStep 3: The GitHub Actions Workflow\nHere is the full publishpypi.yml workflow:\nname: Upload Python Package\n\non:\n  release:\n    types: [published]\n\npermissions:\n  contents: read\n\njobs:\n  release-build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n\n      - uses: actions/setup-python@v5\n        with:\n          python-version: \"3.x\"\n\n      - name: Build release distributions\n        run: |\n          pip install uv\n          uv build\n\n      - name: Upload distributions\n        uses: actions/upload-artifact@v4\n        with:\n          name: release-dists\n          path: dist/\n\n  pypi-publish:\n    runs-on: ubuntu-latest\n    needs: release-build\n    environment:\n      name: pypi\n    permissions:\n      id-token: write\n    steps:\n      - name: Retrieve release distributions\n        uses: actions/download-artifact@v4\n        with:\n          name: release-dists\n          path: dist/\n\n      - name: Publish release distributions to PyPI\n        uses: pypa/gh-action-pypi-publish@release/v1\n        with:\n          packages-dir: dist/\nThe key parts are id-token: write in the permissions block, which enables OIDC, and environment: name: pypi, which scopes the workflow to the named environment. No password or secret is needed anywhere."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#publishing-a-new-release",
+    "href": "posts/publishing-to-pypi/index.html#publishing-a-new-release",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "Publishing a New Release",
+    "text": "Publishing a New Release\nWith everything wired up, releasing a new version is a deliberate three-step process:\n\nBump the version in pyproject.toml (for example, 0.0.1 to 0.0.2)\nCommit and push the change\nGo to your GitHub repo and find the Releases section in the right sidebar, then click Create a new release\n\n\n\n\nThe GitHub repo page with the Releases section highlighted in the sidebar\n\n\nCreate a tag matching the version (like v0.0.2), write release notes, and click Publish release. The workflow fires automatically from there.\n\n\n\nGitHub Actions showing the release-build and pypi-publish jobs both succeeding\n\n\n\n\n\nPyPI showing both 0.0.1 and 0.0.2 releases after the automated publish\n\n\nThe reason releases are manual rather than triggered on every push is intentional. A PyPI publish is permanent. You cannot overwrite or delete a version once it is live. Keeping the release step manual means you are making a conscious decision each time rather than accidentally shipping a half-finished commit."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#verifying-the-install",
+    "href": "posts/publishing-to-pypi/index.html#verifying-the-install",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "Verifying the Install",
+    "text": "Verifying the Install\nAfter publishing, the fastest way to confirm everything works is to create a fresh project and install from PyPI:\nmkdir canvasconnector-test\ncd canvasconnector-test\nuv init\nuv add canvasconnector\nThen run a quick import to confirm it loads correctly. For canvasconnector, a successful connection looks like this:\nhttps://byui.instructure.com\nAmerica/Denver\nConnected successfully as: Mitchell Mecham\nIf that works, the package is live, installable, and functioning correctly for any user who finds it."
+  },
+  {
+    "objectID": "posts/publishing-to-pypi/index.html#summary",
+    "href": "posts/publishing-to-pypi/index.html#summary",
+    "title": "From GitHub to PyPI: Publishing a Python Package with OIDC",
+    "section": "Summary",
+    "text": "Summary\nThe full process from GitHub-only to automated PyPI releases:\n\nBuild with uv build and upload manually with twine upload dist/* using an API token\nCreate a PyPI account and generate a temporary API token under account settings scoped to all projects\nOnce the package exists on PyPI, go to Manage &gt; Publishing on the project page to configure OIDC trusted publishing\nCreate a pypi environment in GitHub repository settings\nAdd the publishpypi.yml workflow with id-token: write permissions and no stored credentials\nFor each future release: bump the version, push, and create a GitHub Release to trigger the workflow\n\nThe canvasconnector package is available at pypi.org/project/canvasconnector and the full source is at github.com/byuirpytooling/canvasconnector."
   }
 ]

@@ -10,7 +10,590 @@
 <atom:link href="https://your-website-url.example.com/index.xml" rel="self" type="application/rss+xml"/>
 <description>A blog built with Quarto</description>
 <generator>quarto-1.9.22</generator>
-<lastBuildDate>Wed, 04 Mar 2026 07:00:00 GMT</lastBuildDate>
+<lastBuildDate>Mon, 23 Mar 2026 06:00:00 GMT</lastBuildDate>
+<item>
+  <title>From GitHub to PyPI: Publishing a Python Package with OIDC</title>
+  <dc:creator>Mitchell L. Mecham</dc:creator>
+  <link>https://your-website-url.example.com/posts/publishing-to-pypi/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<p>Once a package works well enough to share, the next step is getting it onto PyPI so anyone can install it with <code>pip install</code> or <code>uv add</code>. This post walks through how I published <a href="https://pypi.org/project/canvasconnector/">canvasconnector</a> — a Python package for connecting to the Canvas LMS API — starting from a package that only lived on GitHub, all the way to automated releases through GitHub Actions using OIDC trusted publishing.</p>
+<section id="what-you-need-before-starting" class="level2">
+<h2 class="anchored" data-anchor-id="what-you-need-before-starting">What You Need Before Starting</h2>
+<p>Before touching PyPI, the package should be installable from GitHub and have a working <code>pyproject.toml</code>. The canvasconnector README already had installation instructions pointing at the GitHub repo:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">uv</span> pip install git+https://github.com/byuirpytooling/canvasconnector.git</span></code></pre></div></div>
+<p>That is fine for early development, but it is not discoverable and it requires users to know the exact GitHub URL. PyPI solves both of those problems.</p>
+<p>You also need a PyPI account. Head to <a href="https://pypi.org">pypi.org</a>, sign up, and verify your email before continuing. If it gives you recovery codes, save them somewhere safe or risk losing access.</p>
+</section>
+<section id="the-first-upload-manual-with-twine" class="level2">
+<h2 class="anchored" data-anchor-id="the-first-upload-manual-with-twine">The First Upload: Manual with Twine</h2>
+<p>PyPI requires the package to exist before you can configure automated publishing. So the first upload is manual. Start by building the package with uv:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">uv</span> build</span></code></pre></div></div>
+<p>This creates a <code>dist/</code> folder containing two files: a <code>.whl</code> wheel file and a <code>.tar.gz</code> source distribution. Then install twine as a global tool:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">uv</span> tool install twine</span></code></pre></div></div>
+<section id="generating-an-api-token" class="level3">
+<h3 class="anchored" data-anchor-id="generating-an-api-token">Generating an API Token</h3>
+<p>Before uploading you need an API token. Since the package does not exist on PyPI yet, you cannot scope the token to a specific project. Go to your <strong>account settings</strong> (not a project page — the project does not exist yet) and find the <strong>API tokens</strong> section. Click <strong>Add API token</strong>, name it something like <code>canvasconnector</code>, set the scope to <strong>All projects</strong>, and copy the token immediately. You only see it once.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/pypi-api-token.png" class="img-fluid figure-img"></p>
+<figcaption>The API tokens section in PyPI account settings showing a token scoped to all projects</figcaption>
+</figure>
+</div>
+<p>Now upload:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb4-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">twine</span> upload dist/<span class="pp" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">*</span></span></code></pre></div></div>
+<p>Twine will prompt for a username and token. Enter <code>__token__</code> as the username (literally, that string) and paste your API token as the password.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/twine-upload-prompt.png" class="img-fluid figure-img"></p>
+<figcaption>Twine prompting for the API token</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/twine-upload-success.png" class="img-fluid figure-img"></p>
+<figcaption>Successful upload showing both the wheel and source distribution</figcaption>
+</figure>
+</div>
+<p>Once it completes, the package is live. You can verify by going to your PyPI account page.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/pypi-first-release.png" class="img-fluid figure-img"></p>
+<figcaption>canvasconnector appearing on PyPI with its first release</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/pypi-your-projects.png" class="img-fluid figure-img"></p>
+<figcaption>The package listed under your PyPI projects</figcaption>
+</figure>
+</div>
+<p>At this point <code>pip install canvasconnector</code> works for anyone in the world. The manual upload is done and the API token can be deleted since we are about to replace it with something better.</p>
+</section>
+</section>
+<section id="setting-up-oidc-trusted-publishing" class="level2">
+<h2 class="anchored" data-anchor-id="setting-up-oidc-trusted-publishing">Setting Up OIDC Trusted Publishing</h2>
+<p>OIDC (OpenID Connect) lets PyPI verify that a publish request is coming from a specific GitHub Actions workflow in a specific repository, without any stored credentials. No token to manage, rotate, or accidentally leak.</p>
+<section id="step-1-add-a-trusted-publisher-on-pypi" class="level3">
+<h3 class="anchored" data-anchor-id="step-1-add-a-trusted-publisher-on-pypi">Step 1: Add a Trusted Publisher on PyPI</h3>
+<p>Now that the package exists, go to your package on PyPI, click <strong>Manage</strong>, then <strong>Publishing</strong>. This is where you configure the GitHub connection — it lives under the project, not your account settings. Add a new trusted publisher under the GitHub tab and fill in:</p>
+<ul>
+<li><strong>Owner</strong>: your GitHub organization or username (for canvasconnector this is <code>byuirpytooling</code>)</li>
+<li><strong>Repository</strong>: <code>canvasconnector</code></li>
+<li><strong>Workflow name</strong>: <code>publishpypi.yml</code></li>
+<li><strong>Environment name</strong>: <code>pypi</code></li>
+</ul>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/pypi-add-publisher.png" class="img-fluid figure-img"></p>
+<figcaption>The Add a new publisher form on PyPI with fields for owner, repository, workflow, and environment</figcaption>
+</figure>
+</div>
+<p>Make sure the owner matches the actual GitHub organization that owns the repo, not just your personal username. If they differ, the OIDC exchange will fail with an <code>invalid-publisher</code> error.</p>
+</section>
+<section id="step-2-create-a-github-environment" class="level3">
+<h3 class="anchored" data-anchor-id="step-2-create-a-github-environment">Step 2: Create a GitHub Environment</h3>
+<p>GitHub Actions needs a named environment called <code>pypi</code> to match what PyPI expects. Go to your repository <strong>Settings &gt; Environments</strong> and create a new environment named <code>pypi</code>.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/github-environment-add.png" class="img-fluid figure-img"></p>
+<figcaption>Adding the pypi environment in GitHub repository settings</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/github-environments-settings.png" class="img-fluid figure-img"></p>
+<figcaption>Both the pypi and github-pages environments configured</figcaption>
+</figure>
+</div>
+<p>The environment acts as a verified identity context. When the workflow runs inside it, GitHub issues a token that PyPI can validate against the trusted publisher configuration you just set up.</p>
+</section>
+<section id="step-3-the-github-actions-workflow" class="level3">
+<h3 class="anchored" data-anchor-id="step-3-the-github-actions-workflow">Step 3: The GitHub Actions Workflow</h3>
+<p>Here is the full <code>publishpypi.yml</code> workflow:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode yaml code-with-copy"><code class="sourceCode yaml"><span id="cb5-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> Upload Python Package</span></span>
+<span id="cb5-2"></span>
+<span id="cb5-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">on</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-4"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">  </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">release</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-5"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">types</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">[</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">published</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">]</span></span>
+<span id="cb5-6"></span>
+<span id="cb5-7"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">permissions</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-8"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">  </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">contents</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> read</span></span>
+<span id="cb5-9"></span>
+<span id="cb5-10"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">jobs</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-11"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">  </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">release-build</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-12"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">runs-on</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> ubuntu-latest</span></span>
+<span id="cb5-13"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">steps</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-14"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">uses</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> actions/checkout@v4</span></span>
+<span id="cb5-15"></span>
+<span id="cb5-16"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">uses</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> actions/setup-python@v5</span></span>
+<span id="cb5-17"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">with</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-18"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">python-version</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"3.x"</span></span>
+<span id="cb5-19"></span>
+<span id="cb5-20"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> Build release distributions</span></span>
+<span id="cb5-21"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">        run</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">: </span><span class="ch" style="color: #20794D;
+background-color: null;
+font-style: inherit;">|</span></span>
+<span id="cb5-22">          pip install uv</span>
+<span id="cb5-23">          uv build</span>
+<span id="cb5-24"></span>
+<span id="cb5-25"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> Upload distributions</span></span>
+<span id="cb5-26"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">uses</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> actions/upload-artifact@v4</span></span>
+<span id="cb5-27"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">with</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-28"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> release-dists</span></span>
+<span id="cb5-29"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">path</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> dist/</span></span>
+<span id="cb5-30"></span>
+<span id="cb5-31"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">  </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">pypi-publish</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-32"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">runs-on</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> ubuntu-latest</span></span>
+<span id="cb5-33"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">needs</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> release-build</span></span>
+<span id="cb5-34"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">environment</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-35"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> pypi</span></span>
+<span id="cb5-36"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">permissions</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-37"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">id-token</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> write</span></span>
+<span id="cb5-38"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">    </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">steps</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-39"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> Retrieve release distributions</span></span>
+<span id="cb5-40"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">uses</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> actions/download-artifact@v4</span></span>
+<span id="cb5-41"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">with</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-42"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> release-dists</span></span>
+<span id="cb5-43"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">path</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> dist/</span></span>
+<span id="cb5-44"></span>
+<span id="cb5-45"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">      </span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">-</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">name</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> Publish release distributions to PyPI</span></span>
+<span id="cb5-46"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">uses</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> pypa/gh-action-pypi-publish@release/v1</span></span>
+<span id="cb5-47"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">        </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">with</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span></span>
+<span id="cb5-48"><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">          </span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">packages-dir</span><span class="kw" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">:</span><span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;"> dist/</span></span></code></pre></div></div>
+<p>The key parts are <code>id-token: write</code> in the permissions block, which enables OIDC, and <code>environment: name: pypi</code>, which scopes the workflow to the named environment. No password or secret is needed anywhere.</p>
+</section>
+</section>
+<section id="publishing-a-new-release" class="level2">
+<h2 class="anchored" data-anchor-id="publishing-a-new-release">Publishing a New Release</h2>
+<p>With everything wired up, releasing a new version is a deliberate three-step process:</p>
+<ol type="1">
+<li>Bump the version in <code>pyproject.toml</code> (for example, <code>0.0.1</code> to <code>0.0.2</code>)</li>
+<li>Commit and push the change</li>
+<li>Go to your GitHub repo and find the <strong>Releases</strong> section in the right sidebar, then click <strong>Create a new release</strong></li>
+</ol>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/github-create-release.png" class="img-fluid figure-img"></p>
+<figcaption>The GitHub repo page with the Releases section highlighted in the sidebar</figcaption>
+</figure>
+</div>
+<p>Create a tag matching the version (like <code>v0.0.2</code>), write release notes, and click <strong>Publish release</strong>. The workflow fires automatically from there.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/actions-success.png" class="img-fluid figure-img"></p>
+<figcaption>GitHub Actions showing the release-build and pypi-publish jobs both succeeding</figcaption>
+</figure>
+</div>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="https://your-website-url.example.com/posts/publishing-to-pypi/images/pypi-two-releases.png" class="img-fluid figure-img"></p>
+<figcaption>PyPI showing both 0.0.1 and 0.0.2 releases after the automated publish</figcaption>
+</figure>
+</div>
+<p>The reason releases are manual rather than triggered on every push is intentional. A PyPI publish is permanent. You cannot overwrite or delete a version once it is live. Keeping the release step manual means you are making a conscious decision each time rather than accidentally shipping a half-finished commit.</p>
+</section>
+<section id="verifying-the-install" class="level2">
+<h2 class="anchored" data-anchor-id="verifying-the-install">Verifying the Install</h2>
+<p>After publishing, the fastest way to confirm everything works is to create a fresh project and install from PyPI:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">mkdir</span> canvasconnector-test</span>
+<span id="cb6-2"><span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">cd</span> canvasconnector-test</span>
+<span id="cb6-3"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">uv</span> init</span>
+<span id="cb6-4"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">uv</span> add canvasconnector</span></code></pre></div></div>
+<p>Then run a quick import to confirm it loads correctly. For canvasconnector, a successful connection looks like this:</p>
+<pre><code>https://byui.instructure.com
+America/Denver
+Connected successfully as: Mitchell Mecham</code></pre>
+<p>If that works, the package is live, installable, and functioning correctly for any user who finds it.</p>
+</section>
+<section id="summary" class="level2">
+<h2 class="anchored" data-anchor-id="summary">Summary</h2>
+<p>The full process from GitHub-only to automated PyPI releases:</p>
+<ol type="1">
+<li>Build with <code>uv build</code> and upload manually with <code>twine upload dist/*</code> using an API token</li>
+<li>Create a PyPI account and generate a temporary API token under <strong>account settings</strong> scoped to all projects</li>
+<li>Once the package exists on PyPI, go to <strong>Manage &gt; Publishing</strong> on the project page to configure OIDC trusted publishing</li>
+<li>Create a <code>pypi</code> environment in GitHub repository settings</li>
+<li>Add the <code>publishpypi.yml</code> workflow with <code>id-token: write</code> permissions and no stored credentials</li>
+<li>For each future release: bump the version, push, and create a GitHub Release to trigger the workflow</li>
+</ol>
+<p>The canvasconnector package is available at <a href="https://pypi.org/project/canvasconnector/">pypi.org/project/canvasconnector</a> and the full source is at <a href="https://github.com/byuirpytooling/canvasconnector">github.com/byuirpytooling/canvasconnector</a>.</p>
+
+
+</section>
+
+ ]]></description>
+  <category>python</category>
+  <category>pypi</category>
+  <category>github-actions</category>
+  <category>devops</category>
+  <guid>https://your-website-url.example.com/posts/publishing-to-pypi/</guid>
+  <pubDate>Mon, 23 Mar 2026 06:00:00 GMT</pubDate>
+</item>
 <item>
   <title>Canvas Connector React</title>
   <dc:creator>Mitchell L. Mecham</dc:creator>

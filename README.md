@@ -49,7 +49,11 @@ project:
    B. Now `./new_post.sh test "Test Marimo Post" "J. Hathaway"` will create a new folder in the `posts` folder with the folder name `test` that has an `index.qmd` file created with the title of `test marimo` and the author `J. Hathaway`.
 10. Now run `QUARTO_MARIMO_VERSION=0.14.6 quarto preview` to build your site in the `docs` folder and serve it to your default web browser (Note: at some point we should be able to remove `QUARTO_MARIMO_VERSION=0.14.6`).
 
-\*\*Run: $env:QUARTO_MARIMO_VERSION="0.14.6"; quarto preview 11. You can explore your website and make any other needed changes. 12. Now push your changes to Github and then go to `settings > pages` to fix how our site is rendered using [Github pages](https://quarto.org/docs/publishing/github-pages.html). We want to use the `docs` folder method.
+\*\*Run: $env:QUARTO_MARIMO_VERSION="0.14.6"; quarto preview 
+
+11. You can explore your website and make any other needed changes. 
+
+12. Now push your changes to Github and then go to `settings > pages` to fix how our site is rendered using [Github pages](https://quarto.org/docs/publishing/github-pages.html). We want to use the `docs` folder method.
 
 New Stuff
 (Get-Content new_post.sh -Raw) -replace "`r`n", "`n" | Set-Content new_post.sh -NoNewline
