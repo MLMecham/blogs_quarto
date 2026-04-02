@@ -9,11 +9,14 @@ about:
       href: https://bsky.app/
     - icon: linkedin
       text: LinkedIn
-      href: https://linkedin.com
+      href: https://www.linkedin.com/in/mitchell-mecham/
     - icon: github
       text: Github
-      href: https://github.com
+      href: https://github.com/MLMecham
 
 ---
 
-I'm Mitchell and this is my blog. I mainly write about novel things I found. 
+I’m Mitchell, welcome to my blog,
+Where curious finds I love to log.
+I write on things both rare and new,
+The novel sights that catch my view.
