@@ -1,0 +1,257 @@
+---
+title: "More PoweRful"
+description: "An explaination of R's system2 command and how to leverage it to increase the scope of R programming"
+author: "Mitchell L. Mecham"
+date: "2026-04-02"
+categories: [R, Python, UV, devops]
+draft: false
+---
+
+# R Users Can Now Access Any Python Package Without Knowing Python
+
+A lot of valuable data tools are only available in Python. That is fine if you know Python, but a huge chunk of academics and statisticians live entirely in R and have no interest in learning a new language just to download a dataset.
+
+That was the problem we ran into with [Dewey Data](https://github.com/Dewey-Data/deweypy/tree/main). Dewey hosts large academic datasets and has a Python downloader called deweypy. Great package. Useless for lots of the people who actually need the data.
+
+So we built [deweyr](https://github.com/Coxabc/deweyr).
+
+## The Idea
+
+The goal was simple. R users should be able to download Dewey data with a single function call and zero Python setup. No conda environments, no pip installs, no terminal commands they don't understand.
+
+The solution was `system2` and `uv`.
+
+`system2` is a base R function that lets you run shell commands from inside an R script. Most R users have never touched it. Combined with `uv`, a Python package and environment manager that is extremely fast and lightweight, you can spin up a fully isolated Python environment, install any Python package, run it, and capture the output back in R. The user never sees any of it.
+
+## The Terminal is Just a Function Call
+
+Before getting into `system2` it helps to understand what is actually happening when you run something in the terminal.
+
+When you run a Python script from the terminal it looks like this:
+
+```bash
+python file.py arg1 arg2 arg3
+```
+
+That is it. You have a program (`python`), a file to run (`file.py`), and any arguments the script expects. Most command line tools follow this same pattern. The program name comes first, then everything else is arguments passed to it.
+
+Say you had a simple Python script called `greet.py`:
+
+```python
+import sys
+
+name = sys.argv[1]
+language = sys.argv[2]
+
+if language == "english":
+    print(f"Hello, {name}!")
+elif language == "spanish":
+    print(f"Hola, {name}!")
+```
+
+You would run it from the terminal like this:
+
+```bash
+python greet.py Mitchell english
+# Hello, Mitchell!
+```
+
+`system2` just maps directly onto this. The first argument is the program, and `args` is everything that comes after it as a character vector:
+
+```r
+system2(
+  "python",
+  args = c("greet.py", "Mitchell", "english"),
+  stdout = TRUE
+)
+# "Hello, Mitchell!"
+```
+
+You can wrap this in a clean R function so the user never thinks about the terminal:
+
+```r
+greet <- function(name, language = "english") {
+  system2(
+    "python",
+    args = c("greet.py", name, language),
+    stdout = TRUE
+  )
+}
+
+greet("Mitchell")
+# "Hello, Mitchell!"
+```
+
+That is the core idea. Anything you can run from a terminal you can run from R with `system2`. The R user just calls a function.
+
+## From Scripts to Packages
+
+Most useful tools are not standalone files though. They are distributed as packages you install and run as a module. In the terminal that looks like this:
+
+```bash
+python -m deweypy --api-key mykey --download-directory ./data speedy-download folder123
+```
+
+The `-m` flag tells Python to run a package as a module instead of a file. Everything after it is just arguments the package expects. `system2` maps onto this exactly the same way:
+
+```r
+system2(
+  "python",
+  args = c(
+    "-m", "deweypy",
+    "--api-key", "mykey",
+    "--download-directory", "./data",
+    "speedy-download", "folder123"
+  ),
+  stdout = TRUE,
+  stderr = TRUE
+)
+```
+
+Because each argument is its own element in the character vector, adding optional arguments conditionally is clean and readable. Here is the actual core of how `deweyr` builds its command:
+
+```r
+run_deweypy <- function(python_path,
+                        api_key,
+                        download_path,
+                        folder_id,
+                        num_workers = NULL,
+                        partition_key_before = NULL,
+                        partition_key_after = NULL) {
+
+  # Build base arguments
+  args <- c(
+    "-m", "deweypy",
+    "--api-key", api_key,
+    "--download-directory", download_path,
+    "speedy-download", folder_id
+  )
+
+  # Add optional arguments only if provided
+  if (!is.null(num_workers)) {
+    args <- c(args, "--num-workers", as.character(num_workers))
+  }
+
+  if (!is.null(partition_key_before)) {
+    args <- c(args, "--partition-key-before", partition_key_before)
+  }
+
+  if (!is.null(partition_key_after)) {
+    args <- c(args, "--partition-key-after", partition_key_after)
+  }
+
+  system2(python_path, args = args, stdout = TRUE, stderr = TRUE)
+}
+```
+
+You start with the arguments every call needs, then build up from there. Optional parameters only get added if the user passed them in. The command that actually runs in the terminal is whatever `args` looks like at the end. This is cleaner than hardcoding a Python one-liner as a string and makes it easy to add new arguments later without touching the `system2` call itself.
+
+Wrap this in a user-facing function that handles the uv setup, path creation, and URL parsing first, and the R user just calls `dewey_download()` with their API key and folder ID. Everything else is invisible to them.
+
+## Understanding system2
+
+`system2` is a base R function that calls a system command the same way you would from a terminal. The basic signature looks like this:
+
+```r
+system2(
+  command,   # the program to run
+  args,      # a character vector of arguments
+  stdout,    # where to send standard output
+  stderr,    # where to send standard error
+  input      # optional: feed text into stdin
+)
+```
+
+The thing that trips people up at first is that by default `stdout` and `stderr` are both `""`, which means the output goes to the console and is not captured in R. If you want to actually work with the output you need to set `stdout = TRUE`, which returns it as a character vector. Each line of output becomes one element of the vector.
+
+```r
+# This prints to console but returns nothing useful
+system2("uv", args = c("--version"))
+
+# This captures the output so you can use it in R
+version <- system2("uv", args = c("--version"), stdout = TRUE)
+# version is now something like "uv 0.5.1"
+```
+
+`stderr` works the same way. By default errors go to the console. Set `stderr = TRUE` to capture them, or `stderr = FALSE` to suppress them entirely. If you want both stdout and stderr together in one vector you can set `stderr = TRUE` alongside `stdout = TRUE` and they will be interleaved.
+
+The return value when you are not capturing output is the exit code of the process. 0 means it ran fine, anything else means something went wrong. This is useful for checking if a command succeeded before moving on:
+
+```r
+exit_code <- system2("uv", args = c("--version"), stdout = FALSE, stderr = FALSE)
+if (exit_code != 0) stop("uv is not installed or not on PATH")
+```
+
+One other useful argument is `input`, which lets you pipe a string into the command's stdin. This is how you can chain commands together without writing intermediate files.
+
+The main thing to keep in mind is that `system2` is blocking. R waits for the command to finish before moving on. For long downloads that is fine. For something you want to run in the background you would need a different approach.
+
+## How It Works
+
+When someone calls `dewey_download()` for the first time, here is what actually happens under the hood:
+
+1. R checks if `uv` is installed. If not, it installs it automatically.
+2. `uv` downloads a lightweight Python 3.13 installation. No system Python needed.
+3. `uv` creates an isolated virtual environment and installs `deweypy` into it.
+4. `system2` runs the Python downloader with the user's arguments.
+5. The files land in whatever folder the user specified.
+
+From the R user's perspective, they just called a function.
+
+```r
+library(deweyr)
+
+dewey_download(
+  api_key = "your-api-key",
+  folder_id = "your-folder-id"
+)
+```
+
+That is it. No Python. No terminal. No environment to manage.
+
+## Signed URLs and DuckDB
+
+One thing deweypy does that makes this even more useful is generate signed URLs for the files. Instead of downloading everything locally, you can pull the URLs back into R and read them directly with DuckDB. This is useful for large datasets where you only need a slice.
+
+```r
+get_signed_urls <- function(api_key, folder_id) {
+  result <- system2(
+    "uv",
+    args = c(
+      "run", "--with", "deweypy",
+      "python", "-c",
+      paste0(
+        "import json; from dewey import Dewey; ",
+        "d = Dewey('", api_key, "'); ",
+        "urls = d.get_file_urls('", folder_id, "'); ",
+        "print(json.dumps(urls))"
+      )
+    ),
+    stdout = TRUE
+  )
+
+  jsonlite::fromJSON(paste(result, collapse = ""))
+}
+```
+
+Then in R you can pass those URLs straight to DuckDB:
+
+```r
+library(duckdb)
+library(DBI)
+
+urls <- get_signed_urls(api_key = "your-key", folder_id = "your-folder")
+
+con <- dbConnect(duckdb())
+df <- dbGetQuery(con, paste0("SELECT * FROM read_parquet('", urls[1], "') LIMIT 1000"))
+```
+
+No full download needed. Just query what you need.
+
+## The Bigger Point
+
+deweypy is just the example. This pattern works for any Python package that does not have an R equivalent. The only thing an R user needs to install is `uv`. Everything else is handled by the package. That is a low enough bar that you can actually ship it to non-technical users and expect it to work.
+
+If you are building R packages and running into Python tools that do something yours cannot, `system2` plus `uv` is worth knowing.
+
+The full package is on GitHub at [Coxabc/deweyr](https://github.com/Coxabc/deweyr) if you want to see how it is all wired together.

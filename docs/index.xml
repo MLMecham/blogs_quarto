@@ -10,7 +10,611 @@
 <atom:link href="https://your-website-url.example.com/index.xml" rel="self" type="application/rss+xml"/>
 <description>A blog built with Quarto</description>
 <generator>quarto-1.9.22</generator>
-<lastBuildDate>Mon, 23 Mar 2026 06:00:00 GMT</lastBuildDate>
+<lastBuildDate>Thu, 02 Apr 2026 06:00:00 GMT</lastBuildDate>
+<item>
+  <title>More PoweRful</title>
+  <dc:creator>Mitchell L. Mecham</dc:creator>
+  <link>https://your-website-url.example.com/posts/using-python-in-R/</link>
+  <description><![CDATA[ 
+
+
+
+
+
+<section id="r-users-can-now-access-any-python-package-without-knowing-python" class="level1">
+<h1>R Users Can Now Access Any Python Package Without Knowing Python</h1>
+<p>A lot of valuable data tools are only available in Python. That is fine if you know Python, but a huge chunk of academics and statisticians live entirely in R and have no interest in learning a new language just to download a dataset.</p>
+<p>That was the problem we ran into with <a href="https://dewey.works">Dewey Data</a>. Dewey hosts large academic datasets and has a Python downloader called deweypy. Great package. Useless for most of the people who actually need the data.</p>
+<p>So we built <a href="https://github.com/Coxabc/deweyr">deweyr</a>.</p>
+<section id="the-idea" class="level2">
+<h2 class="anchored" data-anchor-id="the-idea">The Idea</h2>
+<p>The goal was simple. R users should be able to download Dewey data with a single function call and zero Python setup. No conda environments, no pip installs, no terminal commands they don’t understand.</p>
+<p>The solution was <code>system2</code> and <code>uv</code>.</p>
+<p><code>system2</code> is a base R function that lets you run shell commands from inside an R script. Most R users have never touched it. Combined with <code>uv</code>, a Python package and environment manager that is extremely fast and lightweight, you can spin up a fully isolated Python environment, install any Python package, run it, and capture the output back in R. The user never sees any of it.</p>
+</section>
+<section id="the-terminal-is-just-a-function-call" class="level2">
+<h2 class="anchored" data-anchor-id="the-terminal-is-just-a-function-call">The Terminal is Just a Function Call</h2>
+<p>Before getting into <code>system2</code> it helps to understand what is actually happening when you run something in the terminal.</p>
+<p>When you run a Python script from the terminal it looks like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb1" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb1-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">python</span> file.py arg1 arg2 arg3</span></code></pre></div></div>
+<p>That is it. You have a program (<code>python</code>), a file to run (<code>file.py</code>), and any arguments the script expects. Most command line tools follow this same pattern. The program name comes first, then everything else is arguments passed to it.</p>
+<p>Say you had a simple Python script called <code>greet.py</code>:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb2" style="background: #f1f3f5;"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><span class="im" style="color: #00769E;
+background-color: null;
+font-style: inherit;">import</span> sys</span>
+<span id="cb2-2"></span>
+<span id="cb2-3">name <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sys.argv[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>]</span>
+<span id="cb2-4">language <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">=</span> sys.argv[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">2</span>]</span>
+<span id="cb2-5"></span>
+<span id="cb2-6"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> language <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"english"</span>:</span>
+<span id="cb2-7">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Hello, </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>name<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">!"</span>)</span>
+<span id="cb2-8"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">elif</span> language <span class="op" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">==</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"spanish"</span>:</span>
+<span id="cb2-9">    <span class="bu" style="color: null;
+background-color: null;
+font-style: inherit;">print</span>(<span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">f"Hola, </span><span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">{</span>name<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">}</span><span class="ss" style="color: #20794D;
+background-color: null;
+font-style: inherit;">!"</span>)</span></code></pre></div></div>
+<p>You would run it from the terminal like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb3" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb3-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">python</span> greet.py Mitchell english</span>
+<span id="cb3-2"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Hello, Mitchell!</span></span></code></pre></div></div>
+<p><code>system2</code> just maps directly onto this. The first argument is the program, and <code>args</code> is everything that comes after it as a character vector:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb4" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(</span>
+<span id="cb4-2">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"python"</span>,</span>
+<span id="cb4-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"greet.py"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mitchell"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"english"</span>),</span>
+<span id="cb4-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span></span>
+<span id="cb4-5">)</span>
+<span id="cb4-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># "Hello, Mitchell!"</span></span></code></pre></div></div>
+<p>You can wrap this in a clean R function so the user never thinks about the terminal:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb5" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1">greet <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(name, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">language =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"english"</span>) {</span>
+<span id="cb5-2">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(</span>
+<span id="cb5-3">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"python"</span>,</span>
+<span id="cb5-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"greet.py"</span>, name, language),</span>
+<span id="cb5-5">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span></span>
+<span id="cb5-6">  )</span>
+<span id="cb5-7">}</span>
+<span id="cb5-8"></span>
+<span id="cb5-9"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">greet</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"Mitchell"</span>)</span>
+<span id="cb5-10"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># "Hello, Mitchell!"</span></span></code></pre></div></div>
+<p>That is the core idea. Anything you can run from a terminal you can run from R with <code>system2</code>. The R user just calls a function.</p>
+</section>
+<section id="from-scripts-to-packages" class="level2">
+<h2 class="anchored" data-anchor-id="from-scripts-to-packages">From Scripts to Packages</h2>
+<p>Most useful tools are not standalone files though. They are distributed as packages you install and run as a module. In the terminal that looks like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb6" style="background: #f1f3f5;"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb6-1"><span class="ex" style="color: null;
+background-color: null;
+font-style: inherit;">python</span> <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">-m</span> deweypy <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--api-key</span> mykey <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">--download-directory</span> ./data speedy-download folder123</span></code></pre></div></div>
+<p>The <code>-m</code> flag tells Python to run a package as a module instead of a file. Everything after it is just arguments the package expects. <code>system2</code> maps onto this exactly the same way:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb7" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(</span>
+<span id="cb7-2">  <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"python"</span>,</span>
+<span id="cb7-3">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(</span>
+<span id="cb7-4">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"-m"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"deweypy"</span>,</span>
+<span id="cb7-5">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--api-key"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"mykey"</span>,</span>
+<span id="cb7-6">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--download-directory"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"./data"</span>,</span>
+<span id="cb7-7">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"speedy-download"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"folder123"</span></span>
+<span id="cb7-8">  ),</span>
+<span id="cb7-9">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>,</span>
+<span id="cb7-10">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stderr =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span></span>
+<span id="cb7-11">)</span></code></pre></div></div>
+<p>Because each argument is its own element in the character vector, adding optional arguments conditionally is clean and readable. Here is the actual core of how <code>deweyr</code> builds its command:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb8" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1">run_deweypy <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(python_path,</span>
+<span id="cb8-2">                        api_key,</span>
+<span id="cb8-3">                        download_path,</span>
+<span id="cb8-4">                        folder_id,</span>
+<span id="cb8-5">                        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">num_workers =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>,</span>
+<span id="cb8-6">                        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">partition_key_before =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>,</span>
+<span id="cb8-7">                        <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">partition_key_after =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">NULL</span>) {</span>
+<span id="cb8-8"></span>
+<span id="cb8-9">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Build base arguments</span></span>
+<span id="cb8-10">  args <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(</span>
+<span id="cb8-11">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"-m"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"deweypy"</span>,</span>
+<span id="cb8-12">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--api-key"</span>, api_key,</span>
+<span id="cb8-13">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--download-directory"</span>, download_path,</span>
+<span id="cb8-14">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"speedy-download"</span>, folder_id</span>
+<span id="cb8-15">  )</span>
+<span id="cb8-16"></span>
+<span id="cb8-17">  <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># Add optional arguments only if provided</span></span>
+<span id="cb8-18">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(num_workers)) {</span>
+<span id="cb8-19">    args <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(args, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--num-workers"</span>, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">as.character</span>(num_workers))</span>
+<span id="cb8-20">  }</span>
+<span id="cb8-21"></span>
+<span id="cb8-22">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(partition_key_before)) {</span>
+<span id="cb8-23">    args <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(args, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--partition-key-before"</span>, partition_key_before)</span>
+<span id="cb8-24">  }</span>
+<span id="cb8-25"></span>
+<span id="cb8-26">  <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">is.null</span>(partition_key_after)) {</span>
+<span id="cb8-27">    args <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(args, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--partition-key-after"</span>, partition_key_after)</span>
+<span id="cb8-28">  }</span>
+<span id="cb8-29"></span>
+<span id="cb8-30">  <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(python_path, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> args, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stderr =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb8-31">}</span></code></pre></div></div>
+<p>You start with the arguments every call needs, then build up from there. Optional parameters only get added if the user passed them in. The command that actually runs in the terminal is whatever <code>args</code> looks like at the end. This is cleaner than hardcoding a Python one-liner as a string and makes it easy to add new arguments later without touching the <code>system2</code> call itself.</p>
+<p>Wrap this in a user-facing function that handles the uv setup, path creation, and URL parsing first, and the R user just calls <code>dewey_download()</code> with their API key and folder ID. Everything else is invisible to them.</p>
+</section>
+<section id="understanding-system2" class="level2">
+<h2 class="anchored" data-anchor-id="understanding-system2">Understanding system2</h2>
+<p><code>system2</code> is a base R function that calls a system command the same way you would from a terminal. The basic signature looks like this:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb9" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(</span>
+<span id="cb9-2">  command,   <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># the program to run</span></span>
+<span id="cb9-3">  args,      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># a character vector of arguments</span></span>
+<span id="cb9-4">  stdout,    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># where to send standard output</span></span>
+<span id="cb9-5">  stderr,    <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># where to send standard error</span></span>
+<span id="cb9-6">  input      <span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># optional: feed text into stdin</span></span>
+<span id="cb9-7">)</span></code></pre></div></div>
+<p>The thing that trips people up at first is that by default <code>stdout</code> and <code>stderr</code> are both <code>""</code>, which means the output goes to the console and is not captured in R. If you want to actually work with the output you need to set <code>stdout = TRUE</code>, which returns it as a character vector. Each line of output becomes one element of the vector.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb10" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># This prints to console but returns nothing useful</span></span>
+<span id="cb10-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"uv"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--version"</span>))</span>
+<span id="cb10-3"></span>
+<span id="cb10-4"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># This captures the output so you can use it in R</span></span>
+<span id="cb10-5">version <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"uv"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--version"</span>), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span>)</span>
+<span id="cb10-6"><span class="co" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;"># version is now something like "uv 0.5.1"</span></span></code></pre></div></div>
+<p><code>stderr</code> works the same way. By default errors go to the console. Set <code>stderr = TRUE</code> to capture them, or <code>stderr = FALSE</code> to suppress them entirely. If you want both stdout and stderr together in one vector you can set <code>stderr = TRUE</code> alongside <code>stdout = TRUE</code> and they will be interleaved.</p>
+<p>The return value when you are not capturing output is the exit code of the process. 0 means it ran fine, anything else means something went wrong. This is useful for checking if a command succeeded before moving on:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb11" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1">exit_code <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"uv"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--version"</span>), <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stderr =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">FALSE</span>)</span>
+<span id="cb11-2"><span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">if</span> (exit_code <span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">!=</span> <span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">0</span>) <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">stop</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"uv is not installed or not on PATH"</span>)</span></code></pre></div></div>
+<p>One other useful argument is <code>input</code>, which lets you pipe a string into the command’s stdin. This is how you can chain commands together without writing intermediate files.</p>
+<p>The main thing to keep in mind is that <code>system2</code> is blocking. R waits for the command to finish before moving on. For long downloads that is fine. For something you want to run in the background you would need a different approach.</p>
+</section>
+<section id="how-it-works" class="level2">
+<h2 class="anchored" data-anchor-id="how-it-works">How It Works</h2>
+<p>When someone calls <code>dewey_download()</code> for the first time, here is what actually happens under the hood:</p>
+<ol type="1">
+<li>R checks if <code>uv</code> is installed. If not, it installs it automatically.</li>
+<li><code>uv</code> downloads a lightweight Python 3.13 installation. No system Python needed.</li>
+<li><code>uv</code> creates an isolated virtual environment and installs <code>deweypy</code> into it.</li>
+<li><code>system2</code> runs the Python downloader with the user’s arguments.</li>
+<li>The files land in whatever folder the user specified.</li>
+</ol>
+<p>From the R user’s perspective, they just called a function.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb12" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(deweyr)</span>
+<span id="cb12-2"></span>
+<span id="cb12-3"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dewey_download</span>(</span>
+<span id="cb12-4">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">api_key =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"your-api-key"</span>,</span>
+<span id="cb12-5">  <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">folder_id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"your-folder-id"</span></span>
+<span id="cb12-6">)</span></code></pre></div></div>
+<p>That is it. No Python. No terminal. No environment to manage.</p>
+</section>
+<section id="signed-urls-and-duckdb" class="level2">
+<h2 class="anchored" data-anchor-id="signed-urls-and-duckdb">Signed URLs and DuckDB</h2>
+<p>One thing deweypy does that makes this even more useful is generate signed URLs for the files. Instead of downloading everything locally, you can pull the URLs back into R and read them directly with DuckDB. This is useful for large datasets where you only need a slice.</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb13" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1">get_signed_urls <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="cf" style="color: #003B4F;
+background-color: null;
+font-weight: bold;
+font-style: inherit;">function</span>(api_key, folder_id) {</span>
+<span id="cb13-2">  result <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">system2</span>(</span>
+<span id="cb13-3">    <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"uv"</span>,</span>
+<span id="cb13-4">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">args =</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">c</span>(</span>
+<span id="cb13-5">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"run"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"--with"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"deweypy"</span>,</span>
+<span id="cb13-6">      <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"python"</span>, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"-c"</span>,</span>
+<span id="cb13-7">      <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(</span>
+<span id="cb13-8">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"import json; from dewey import Dewey; "</span>,</span>
+<span id="cb13-9">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"d = Dewey('"</span>, api_key, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"'); "</span>,</span>
+<span id="cb13-10">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"urls = d.get_file_urls('"</span>, folder_id, <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"'); "</span>,</span>
+<span id="cb13-11">        <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"print(json.dumps(urls))"</span></span>
+<span id="cb13-12">      )</span>
+<span id="cb13-13">    ),</span>
+<span id="cb13-14">    <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">stdout =</span> <span class="cn" style="color: #8f5902;
+background-color: null;
+font-style: inherit;">TRUE</span></span>
+<span id="cb13-15">  )</span>
+<span id="cb13-16"></span>
+<span id="cb13-17">  jsonlite<span class="sc" style="color: #5E5E5E;
+background-color: null;
+font-style: inherit;">::</span><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">fromJSON</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste</span>(result, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">collapse =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">""</span>))</span>
+<span id="cb13-18">}</span></code></pre></div></div>
+<p>Then in R you can pass those URLs straight to DuckDB:</p>
+<div class="code-copy-outer-scaffold"><div class="sourceCode" id="cb14" style="background: #f1f3f5;"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(duckdb)</span>
+<span id="cb14-2"><span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">library</span>(DBI)</span>
+<span id="cb14-3"></span>
+<span id="cb14-4">urls <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">get_signed_urls</span>(<span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">api_key =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"your-key"</span>, <span class="at" style="color: #657422;
+background-color: null;
+font-style: inherit;">folder_id =</span> <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"your-folder"</span>)</span>
+<span id="cb14-5"></span>
+<span id="cb14-6">con <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dbConnect</span>(<span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">duckdb</span>())</span>
+<span id="cb14-7">df <span class="ot" style="color: #003B4F;
+background-color: null;
+font-style: inherit;">&lt;-</span> <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">dbGetQuery</span>(con, <span class="fu" style="color: #4758AB;
+background-color: null;
+font-style: inherit;">paste0</span>(<span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"SELECT * FROM read_parquet('"</span>, urls[<span class="dv" style="color: #AD0000;
+background-color: null;
+font-style: inherit;">1</span>], <span class="st" style="color: #20794D;
+background-color: null;
+font-style: inherit;">"') LIMIT 1000"</span>))</span></code></pre></div></div>
+<p>No full download needed. Just query what you need.</p>
+</section>
+<section id="the-bigger-point" class="level2">
+<h2 class="anchored" data-anchor-id="the-bigger-point">The Bigger Point</h2>
+<p>deweypy is just the example. This pattern works for any Python package that does not have an R equivalent. The only thing an R user needs to install is <code>uv</code>. Everything else is handled by the package. That is a low enough bar that you can actually ship it to non-technical users and expect it to work.</p>
+<p>If you are building R packages and running into Python tools that do something yours cannot, <code>system2</code> plus <code>uv</code> is worth knowing.</p>
+<p>The full package is on GitHub at <a href="https://github.com/Coxabc/deweyr">Coxabc/deweyr</a> if you want to see how it is all wired together.</p>
+
+
+</section>
+</section>
+
+ ]]></description>
+  <category>R</category>
+  <category>Python</category>
+  <category>UV</category>
+  <category>devops</category>
+  <guid>https://your-website-url.example.com/posts/using-python-in-R/</guid>
+  <pubDate>Thu, 02 Apr 2026 06:00:00 GMT</pubDate>
+</item>
 <item>
   <title>From GitHub to PyPI: Publishing a Python Package with OIDC</title>
   <dc:creator>Mitchell L. Mecham</dc:creator>

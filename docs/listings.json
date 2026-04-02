@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/using-python-in-R/index.html",
       "/posts/publishing-to-pypi/index.html",
       "/posts/canvas-connector-react/index.html",
       "/posts/post-with-code/index.html",
